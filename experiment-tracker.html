@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>实验记录工具</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 36px 40px;
+      width: 100%;
+      max-width: 700px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 22px;
+      color: #1a1a2e;
+      margin-bottom: 32px;
+      font-weight: 700;
+    }
+
+    /* ── Setup ── */
+    .setup-group { margin-bottom: 16px; text-align: left; }
+
+    .setup-label { font-size: 14px; color: #555; margin-bottom: 8px; display: block; }
+
+    input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+
+    input[type="number"] { text-align: center; }
+    input[type="text"]:focus, input[type="number"]:focus { border-color: #4f8ef7; }
+
+    .btn-start {
+      margin-top: 8px;
+      width: 100%;
+      padding: 13px;
+      font-size: 17px;
+      font-weight: 600;
+      background: #4f8ef7;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-start:hover { background: #2f6de0; }
+
+    /* ── Recording: two-column grid ── */
+    .rec-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .exp-name {
+      font-size: 14px;
+      color: #4f8ef7;
+      font-weight: 600;
+    }
+
+    .progress {
+      font-size: 14px;
+      color: #aaa;
+    }
+
+    .rec-grid {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 0;
+      text-align: left;
+    }
+
+    /* Left column */
+    .rec-left {
+      padding-right: 24px;
+      border-right: 1px dashed #e8e8e8;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #bbb;
+      margin-bottom: 12px;
+    }
+
+    .stats {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .stat-box {
+      padding: 12px 16px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .stat-box.success { background: #e8f8f0; }
+    .stat-box.failure { background: #fff0f0; }
+    .stat-box.rate { background: #f0f4ff; }
+    .stat-box.rate .stat-count { color: #4f8ef7; font-size: 22px; }
+    .stat-box.rate .stat-label { color: #4f8ef7; }
+
+    .stat-count { font-size: 28px; font-weight: 700; }
+    .stat-box.success .stat-count { color: #27ae60; }
+    .stat-box.failure .stat-count { color: #e74c3c; }
+
+    .stat-label { font-size: 13px; }
+    .stat-box.success .stat-label { color: #27ae60; }
+    .stat-box.failure .stat-label { color: #e74c3c; }
+
+    /* Right column */
+    .rec-right {
+      padding-left: 24px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .current-exp {
+      font-size: 48px;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin-bottom: 4px;
+      text-align: center;
+    }
+
+    .current-sub-label {
+      font-size: 13px;
+      color: #aaa;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    /* Sub-experiments */
+    .subexp-wrap { margin-bottom: 14px; }
+
+    .subexp-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .subexp-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f8f9fb;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 13px;
+    }
+
+    .subexp-name { flex: 1; color: #333; }
+
+    .subexp-btn {
+      padding: 3px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .subexp-btn:disabled { opacity: 0.35; cursor: default; }
+    .subexp-btn.s { background: #e8f8f0; color: #27ae60; }
+    .subexp-btn.s:not(:disabled):hover { background: #c5f0d8; }
+    .subexp-btn.f { background: #fff0f0; color: #e74c3c; }
+    .subexp-btn.f:not(:disabled):hover { background: #ffd5d5; }
+    .subexp-btn.active-s { background: #27ae60; color: #fff; }
+    .subexp-btn.active-f { background: #e74c3c; color: #fff; }
+
+    .subexp-delete {
+      background: none;
+      border: none;
+      color: #ddd;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      padding: 0 2px;
+      transition: color 0.15s;
+    }
+
+    .subexp-delete:hover { color: #e74c3c; }
+
+    .subexp-add-row { display: flex; gap: 8px; }
+
+    .subexp-add-row input {
+      flex: 1;
+      padding: 7px 11px;
+      font-size: 13px;
+      border: 1px dashed #ddd;
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .subexp-add-row input:focus { border-color: #4f8ef7; border-style: solid; }
+
+    .subexp-add-btn {
+      padding: 7px 13px;
+      font-size: 13px;
+      font-weight: 600;
+      background: #f0f2f5;
+      color: #555;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.2s;
+    }
+
+    .subexp-add-btn:hover { background: #e0e3ea; }
+
+    .subexp-toggle-btn {
+      font-size: 12px;
+      color: #bbb;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 2px;
+      transition: color 0.15s;
+    }
+
+    .subexp-toggle-btn:hover { color: #4f8ef7; }
+
+    /* Sub-experiment title */
+    .title-wrap { margin-bottom: 14px; }
+
+    .title-wrap input {
+      width: 70%;
+      padding: 9px 13px;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: inherit;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      outline: none;
+      color: #fa4d9b;
+      transition: border-color 0.2s;
+    }
+
+    .title-wrap input:focus { border-color: #fa4d9b; }
+    .title-wrap input::placeholder { font-weight: 400; color: #f67fb5; }
+
+    /* Note */
+    .note-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .note-wrap label { font-size: 12px; color: #aaa; white-space: nowrap; flex-shrink: 0; }
+
+    #note-input {
+      flex: 1;
+      padding: 7px 11px;
+      font-size: 13px;
+      font-family: inherit;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      outline: none;
+      color: #333;
+      transition: border-color 0.2s;
+    }
+
+    #note-input:focus { border-color: #4f8ef7; }
+
+    /* Action buttons */
+    .action-btns { display: flex; gap: 10px; margin-bottom: 10px; }
+
+    .btn-record {
+      flex: 1;
+      padding: 14px;
+      font-size: 17px;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    .btn-record:active { transform: scale(0.97); }
+    .btn-success { background: #27ae60; color: #fff; }
+    .btn-success:hover { background: #1e8c4e; }
+    .btn-failure { background: #e74c3c; color: #fff; }
+    .btn-failure:hover { background: #c0392b; }
+
+    .btn-end-early {
+      width: 100%;
+      padding: 9px;
+      font-size: 13px;
+      font-weight: 500;
+      background: none;
+      color: #bbb;
+      border: 1px dashed #ddd;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .btn-end-early:hover { color: #e74c3c; border-color: #e74c3c; }
+
+    /* Mobile: stack columns */
+    @media (max-width: 600px) {
+      .card { padding: 28px 20px; }
+
+      .rec-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .rec-left {
+        padding-right: 0;
+        border-right: none;
+        border-bottom: 1px dashed #e8e8e8;
+        padding-bottom: 20px;
+        margin-bottom: 20px;
+      }
+
+      .stats { flex-direction: row; }
+
+      .stat-box { flex-direction: column; align-items: center; flex: 1; }
+
+      .rec-right { padding-left: 0; }
+    }
+
+    /* ── Done ── */
+    .done-icon { font-size: 52px; margin-bottom: 10px; }
+
+    .done-title { font-size: 20px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+
+    .done-exp-name { font-size: 14px; color: #4f8ef7; font-weight: 600; margin-bottom: 20px; }
+
+    .done-stats { display: flex; justify-content: space-around; margin-bottom: 16px; }
+
+    .done-stat { text-align: center; }
+    .done-stat .num { font-size: 36px; font-weight: 700; }
+    .done-stat .lbl { font-size: 13px; margin-top: 4px; }
+    .done-stat.s .num { color: #27ae60; }
+    .done-stat.s .lbl { color: #27ae60; }
+    .done-stat.f .num { color: #e74c3c; }
+    .done-stat.f .lbl { color: #e74c3c; }
+
+    .rate { font-size: 15px; color: #666; margin-bottom: 20px; }
+    .rate span { font-weight: 700; color: #4f8ef7; }
+
+    .auto-saved {
+      font-size: 13px;
+      color: #27ae60;
+      margin-bottom: 20px;
+    }
+
+    /* Log */
+    .log-section { text-align: left; margin-bottom: 20px; }
+    .log-title { font-size: 14px; font-weight: 600; color: #555; margin-bottom: 10px; }
+
+    .log-list {
+      max-height: 260px;
+      overflow-y: auto;
+      border: 1px solid #eee;
+      border-radius: 10px;
+      padding: 6px 0;
+    }
+
+    .log-item { padding: 8px 12px; border-bottom: 1px solid #f5f5f5; font-size: 13px; }
+    .log-item:last-child { border-bottom: none; }
+
+    .log-main { display: flex; align-items: flex-start; gap: 10px; }
+    .log-num { flex-shrink: 0; color: #aaa; width: 40px; }
+
+    .log-badge {
+      flex-shrink: 0;
+      padding: 1px 8px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .log-badge.s { background: #e8f8f0; color: #27ae60; }
+    .log-badge.f { background: #fff0f0; color: #e74c3c; }
+
+    .log-note { color: #666; word-break: break-all; line-height: 1.5; }
+
+    .log-subexps { margin-top: 5px; margin-left: 50px; display: flex; flex-direction: column; gap: 3px; }
+
+    .log-subexp-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #888; }
+    .log-subexp-item .log-badge { font-size: 11px; padding: 0 6px; }
+
+    /* Done buttons */
+    .done-btns { display: flex; gap: 10px; }
+
+    .btn-redownload {
+      flex: 1;
+      padding: 13px;
+      font-size: 15px;
+      font-weight: 600;
+      background: #4f8ef7;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-redownload:hover { background: #2f6de0; }
+
+    .btn-discard {
+      flex: 1;
+      padding: 13px;
+      font-size: 15px;
+      font-weight: 600;
+      background: none;
+      color: #bbb;
+      border: 1px dashed #ddd;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .btn-discard:hover { color: #e74c3c; border-color: #e74c3c; }
+
+    /* ── History list in left column ── */
+    .history-section { margin-top: 14px; }
+
+    .history-list {
+      max-height: 200px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .history-list::-webkit-scrollbar { width: 4px; }
+    .history-list::-webkit-scrollbar-track { background: transparent; }
+    .history-list::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 4px; }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 7px;
+      border-radius: 8px;
+      background: #f8f9fb;
+      font-size: 11px;
+    }
+
+    .history-num { color: #bbb; flex-shrink: 0; width: 40px; white-space: nowrap; }
+
+    .history-badge {
+      flex-shrink: 0;
+      padding: 1px 6px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .history-badge.s { background: #e8f8f0; color: #27ae60; }
+    .history-badge.f { background: #fff0f0; color: #e74c3c; }
+
+    .history-title {
+      flex: 1;
+      color: #666;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .history-del {
+      background: none;
+      border: none;
+      color: #ddd;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+      padding: 0 2px;
+      flex-shrink: 0;
+      transition: color 0.15s;
+    }
+
+    .history-del:hover { color: #e74c3c; }
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+
+    <!-- ── Setup ── -->
+    <div id="view-setup">
+      <h1>实验记录工具</h1>
+      <div class="setup-group">
+        <label class="setup-label" for="name-input">实验名称</label>
+        <input type="text" id="name-input" placeholder="例如：细胞培养实验">
+      </div>
+      <div class="setup-group">
+        <label class="setup-label" for="total-input">实验总次数</label>
+        <input type="number" id="total-input" min="1" placeholder="例如：10">
+      </div>
+      <button class="btn-start" onclick="startExperiment()">开始实验</button>
+    </div>
+
+    <!-- ── Recording ── -->
+    <div id="view-recording" class="hidden">
+      <div class="rec-header">
+        <span class="exp-name" id="rec-exp-name"></span>
+      </div>
+
+      <div class="rec-grid">
+        <!-- Left: history stats -->
+        <div class="rec-left">
+          <div class="section-label">历史统计</div>
+          <div class="stats">
+            <div class="stat-box success">
+              <div class="stat-label">成功</div>
+              <div class="stat-count" id="success-count">0</div>
+            </div>
+            <div class="stat-box failure">
+              <div class="stat-label">失败</div>
+              <div class="stat-count" id="failure-count">0</div>
+            </div>
+            <div class="stat-box rate">
+              <div class="stat-label">成功率</div>
+              <div class="stat-count" id="rate-count">—</div>
+            </div>
+          </div>
+          <div class="progress" id="progress-text" style="margin-top: 14px; text-align: center;"></div>
+
+          <div class="history-section">
+            <div class="section-label" style="margin-top: 14px; margin-bottom: 8px;">历史记录</div>
+            <div class="history-list" id="history-list">
+              <div style="font-size:11px;color:#ccc;text-align:center;padding:6px 0;">暂无记录</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: current experiment -->
+        <div class="rec-right">
+          <div class="title-wrap">
+            <input type="text" id="subexp-title-input" placeholder="子实验标题（填入衣服颜色等信息）">
+          </div>
+          <div class="section-label">当前实验</div>
+          <div class="current-exp" id="current-num"></div>
+          <div class="current-sub-label">第 <span id="current-display"></span> 次</div>
+
+          <div class="subexp-wrap">
+            <div class="subexp-list" id="subexp-list"></div>
+            <div class="subexp-add-row hidden" id="subexp-add-row">
+              <input type="text" id="subexp-input" placeholder="子任务名称…">
+              <button class="subexp-add-btn" onclick="addSubExp()">添加</button>
+            </div>
+            <button class="subexp-toggle-btn" id="subexp-toggle-btn" onclick="showSubExpInput()">＋ 添加子任务</button>
+          </div>
+
+          <div class="note-wrap">
+            <label for="note-input">备注（可选）</label>
+            <input type="text" id="note-input" placeholder="失败原因、观察记录…">
+          </div>
+
+          <div class="action-btns">
+            <button class="btn-record btn-success" onclick="record('success')">成功</button>
+            <button class="btn-record btn-failure" onclick="record('failure')">失败</button>
+          </div>
+          <button class="btn-end-early" onclick="endEarly()">提前结束</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Done ── -->
+    <div id="view-done" class="hidden">
+      <div class="done-icon">🎉</div>
+      <div class="done-title">实验全部完成！</div>
+      <div class="done-exp-name" id="done-exp-name"></div>
+      <div class="done-stats">
+        <div class="done-stat s">
+          <div class="num" id="done-success"></div>
+          <div class="lbl">成功</div>
+        </div>
+        <div class="done-stat f">
+          <div class="num" id="done-failure"></div>
+          <div class="lbl">失败</div>
+        </div>
+      </div>
+      <div class="rate">成功率：<span id="done-rate"></span></div>
+      <div class="auto-saved" id="auto-saved-msg"></div>
+
+      <div class="log-section">
+        <div class="log-title">实验日志</div>
+        <div class="log-list" id="log-list"></div>
+      </div>
+
+      <div class="done-btns">
+        <button class="btn-redownload" onclick="exportTxt()">重新下载 TXT</button>
+        <button class="btn-discard" onclick="reset()">重新开始</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let total = 0, current = 0, success = 0, failure = 0, expName = '';
+    let logs = [];
+    let subExpNames = [];
+    let subExpResults = [];
+    let subExpTitle = '';
+
+    function show(id) {
+      ['view-setup', 'view-recording', 'view-done'].forEach(v => {
+        document.getElementById(v).classList.toggle('hidden', v !== id);
+      });
+    }
+
+    function startExperiment() {
+      const val = parseInt(document.getElementById('total-input').value);
+      if (!val || val < 1) { alert('请输入有效的实验次数（至少1次）'); return; }
+      expName = document.getElementById('name-input').value.trim();
+      total = val; current = 1; success = 0; failure = 0; logs = [];
+      subExpNames = []; subExpResults = []; subExpTitle = '';
+      document.getElementById('subexp-title-input').value = '';
+      document.getElementById('rec-exp-name').textContent = expName || '';
+      updateRecording();
+      show('view-recording');
+    }
+
+    function updateRecording() {
+      const completed = current - 1;
+      document.getElementById('progress-text').textContent = `已完成 ${completed} / ${total} 次`;
+      document.getElementById('current-num').textContent = current;
+      document.getElementById('current-display').textContent = current;
+      document.getElementById('success-count').textContent = success;
+      document.getElementById('failure-count').textContent = failure;
+      const rate = (success + failure) > 0 ? ((success / (success + failure)) * 100).toFixed(1) + '%' : '—';
+      document.getElementById('rate-count').textContent = rate;
+      document.getElementById('note-input').value = '';
+      subExpResults = subExpNames.map(() => null);
+      hideSubExpInput();
+      // Sync title field (may have been edited mid-trial)
+      subExpTitle = document.getElementById('subexp-title-input').value.trim();
+      renderSubExpList();
+      renderHistory();
+    }
+
+    function showSubExpInput() {
+      document.getElementById('subexp-add-row').classList.remove('hidden');
+      document.getElementById('subexp-toggle-btn').classList.add('hidden');
+      document.getElementById('subexp-input').focus();
+    }
+
+    function hideSubExpInput() {
+      document.getElementById('subexp-input').value = '';
+      document.getElementById('subexp-add-row').classList.add('hidden');
+      document.getElementById('subexp-toggle-btn').classList.remove('hidden');
+    }
+
+    function addSubExp() {
+      const input = document.getElementById('subexp-input');
+      const name = input.value.trim();
+      if (!name) { hideSubExpInput(); return; }
+      subExpNames.push(name);
+      subExpResults.push(null);
+      renderSubExpList();
+      hideSubExpInput();
+    }
+
+    function setSubExpResult(idx, result) {
+      subExpResults[idx] = subExpResults[idx] === result ? null : result;
+      renderSubExpList();
+    }
+
+    function deleteSubExp(idx) {
+      subExpNames.splice(idx, 1);
+      subExpResults.splice(idx, 1);
+      renderSubExpList();
+    }
+
+    function renderHistory() {
+      const list = document.getElementById('history-list');
+      if (logs.length === 0) {
+        list.innerHTML = '<div style="font-size:11px;color:#ccc;text-align:center;padding:6px 0;">暂无记录</div>';
+        return;
+      }
+      list.innerHTML = logs.map((e, i) => {
+        const cls = e.result === 'success' ? 's' : 'f';
+        const badge = e.result === 'success' ? '成功' : '失败';
+        const title = e.title || '';
+        return `
+          <div class="history-item">
+            <span class="history-num">第${e.index}次</span>
+            <span class="history-badge ${cls}">${badge}</span>
+            <span class="history-title">${title || '<span style="color:#ccc">—</span>'}</span>
+            <button class="history-del" onclick="deleteLog(${i})" title="删除此条记录">×</button>
+          </div>`;
+      }).join('');
+      // Scroll to bottom to show latest
+      list.scrollTop = list.scrollHeight;
+    }
+
+    function deleteLog(i) {
+      logs.splice(i, 1);
+      // Re-index remaining logs
+      logs.forEach((l, idx) => { l.index = idx + 1; });
+      // Recalculate stats
+      success = logs.filter(l => l.result === 'success').length;
+      failure = logs.filter(l => l.result === 'failure').length;
+      current = logs.length + 1;
+      // Update display
+      const completed = current - 1;
+      document.getElementById('progress-text').textContent = `已完成 ${completed} / ${total} 次`;
+      document.getElementById('current-num').textContent = current;
+      document.getElementById('current-display').textContent = current;
+      document.getElementById('success-count').textContent = success;
+      document.getElementById('failure-count').textContent = failure;
+      const rate = (success + failure) > 0 ? ((success / (success + failure)) * 100).toFixed(1) + '%' : '—';
+      document.getElementById('rate-count').textContent = rate;
+      renderHistory();
+      saveBackup();
+    }
+
+    function renderSubExpList() {
+      const list = document.getElementById('subexp-list');
+      if (subExpNames.length === 0) { list.innerHTML = ''; return; }
+      list.innerHTML = subExpNames.map((name, i) => {
+        const result = subExpResults[i];
+        const done = result !== null;
+        return `
+          <div class="subexp-item">
+            <span class="subexp-name">${name}</span>
+            <button class="subexp-btn s ${result === 'success' ? 'active-s' : ''}"
+              onclick="setSubExpResult(${i}, 'success')" ${done && result !== 'success' ? 'disabled' : ''}>成功</button>
+            <button class="subexp-btn f ${result === 'failure' ? 'active-f' : ''}"
+              onclick="setSubExpResult(${i}, 'failure')" ${done && result !== 'failure' ? 'disabled' : ''}>失败</button>
+            <button class="subexp-delete" onclick="deleteSubExp(${i})" title="删除">×</button>
+          </div>`;
+      }).join('');
+    }
+
+    function record(result) {
+      const note = document.getElementById('note-input').value.trim();
+      subExpTitle = document.getElementById('subexp-title-input').value.trim();
+      const subExps = subExpNames.map((name, i) => ({ name, result: subExpResults[i] }));
+      logs.push({ index: current, result, title: subExpTitle, note, subExps });
+      saveBackup();
+
+      if (result === 'success') success++;
+      else failure++;
+
+      if (current >= total) {
+        showDone();
+      } else {
+        current++;
+        updateRecording();
+      }
+    }
+
+    function showDone() {
+      localStorage.removeItem('exp_backup');
+      document.getElementById('done-exp-name').textContent = expName || '';
+      document.getElementById('done-success').textContent = success;
+      document.getElementById('done-failure').textContent = failure;
+      const rate = total > 0 ? ((success / total) * 100).toFixed(1) + '%' : '—';
+      document.getElementById('done-rate').textContent = rate;
+      renderLog();
+      show('view-done');
+      // 自动下载
+      exportTxt();
+      document.getElementById('auto-saved-msg').textContent = '记录已自动下载至下载文件夹';
+    }
+
+    function renderLog() {
+      const list = document.getElementById('log-list');
+      list.innerHTML = logs.map(e => {
+        const subHtml = e.subExps && e.subExps.length > 0
+          ? `<div class="log-subexps">${e.subExps.map(s => {
+              const r = s.result === 'success' ? 's' : s.result === 'failure' ? 'f' : null;
+              const badge = r
+                ? `<span class="log-badge ${r}">${r === 's' ? '成功' : '失败'}</span>`
+                : '<span style="color:#ccc;font-size:11px">未记录</span>';
+              return `<div class="log-subexp-item">${badge}<span>${s.name}</span></div>`;
+            }).join('')}</div>`
+          : '';
+        return `
+          <div class="log-item">
+            <div class="log-main">
+              <span class="log-num">第${e.index}次</span>
+              <span class="log-badge ${e.result === 'success' ? 's' : 'f'}">${e.result === 'success' ? '成功' : '失败'}</span>
+              ${e.title ? `<span class="log-note" style="color:#4f8ef7;font-weight:600">${e.title}</span>` : ''}
+              ${e.note ? `<span class="log-note">${e.note}</span>` : ''}
+            </div>
+            ${subHtml}
+          </div>`;
+      }).join('');
+    }
+
+    function endEarly() {
+      if (!confirm(`确定要提前结束实验吗？\n已完成 ${current - 1} / ${total} 次`)) return;
+      total = current - 1;
+      showDone();
+    }
+
+    function exportTxt() {
+      const rate = total > 0 ? ((success / total) * 100).toFixed(1) + '%' : '—';
+      const date = new Date().toLocaleString('zh-CN');
+      let lines = ['实验记录报告', '='.repeat(30)];
+      if (expName) lines.push(`实验名称：${expName}`);
+      lines.push(
+        `导出时间：${date}`,
+        `实验总次数：${total}`,
+        `成功：${success}　失败：${failure}　成功率：${rate}`,
+        '='.repeat(30),
+        '实验日志：',
+      );
+      logs.forEach(e => {
+        const result = e.result === 'success' ? '成功' : '失败';
+        const titlePart = e.title ? `  标题：${e.title}` : '';
+        const notePart = e.note ? `  备注：${e.note}` : '';
+        lines.push(`第${e.index}次  [${result}]${titlePart}${notePart}`);
+        if (e.subExps && e.subExps.length > 0) {
+          e.subExps.forEach(s => {
+            const sr = s.result === 'success' ? '成功' : s.result === 'failure' ? '失败' : '未记录';
+            lines.push(`  └ ${s.name}  [${sr}]`);
+          });
+        }
+      });
+
+      // Summary
+      lines.push('', '='.repeat(30), '汇总：');
+      lines.push(`实验总次数：${total}　成功：${success}　失败：${failure}　成功率：${rate}`);
+
+      if (subExpNames.length > 0) {
+        lines.push('', '子任务汇总：');
+        subExpNames.forEach(name => {
+          let s = 0, f = 0, u = 0;
+          logs.forEach(e => {
+            const sub = e.subExps && e.subExps.find(x => x.name === name);
+            if (!sub) { u++; return; }
+            if (sub.result === 'success') s++;
+            else if (sub.result === 'failure') f++;
+            else u++;
+          });
+          const subRate = (s + f) > 0 ? ((s / (s + f)) * 100).toFixed(1) + '%' : '—';
+          lines.push(`  ${name}：成功 ${s} / 失败 ${f}${u > 0 ? ` / 未记录 ${u}` : ''}　成功率 ${subRate}`);
+        });
+      }
+
+      // Title-based summary (group by unique non-empty title values)
+      const titleGroups = [...new Set(logs.map(e => e.title || '').filter(t => t !== ''))];
+      if (titleGroups.length > 0) {
+        lines.push('', '子实验标题分类汇总：');
+        titleGroups.forEach(title => {
+          const tLogs = logs.filter(e => (e.title || '') === title);
+          const total_t = tLogs.length;
+          const success_t = tLogs.filter(e => e.result === 'success').length;
+          const fail_t = total_t - success_t;
+          const rate_t = (success_t / total_t * 100).toFixed(1) + '%';
+          lines.push(`  ${title}：总次数 ${total_t}　成功 ${success_t}　失败 ${fail_t}　成功率 ${rate_t}`);
+          if (subExpNames.length > 0) {
+            subExpNames.forEach(name => {
+              let s = 0, f = 0, u = 0;
+              tLogs.forEach(e => {
+                const sub = e.subExps && e.subExps.find(x => x.name === name);
+                if (!sub) { u++; return; }
+                if (sub.result === 'success') s++;
+                else if (sub.result === 'failure') f++;
+                else u++;
+              });
+              const subRate = (s + f) > 0 ? ((s / (s + f)) * 100).toFixed(1) + '%' : '—';
+              lines.push(`    ${name}：成功 ${s} / 失败 ${f}${u > 0 ? ` / 未记录 ${u}` : ''}　成功率 ${subRate}`);
+            });
+          }
+        });
+      }
+
+      const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      const filename = expName ? `${expName}_实验记录.txt` : `实验记录_${date.replace(/[/:]/g, '-')}.txt`;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function reset() {
+      document.getElementById('name-input').value = '';
+      document.getElementById('total-input').value = '';
+      document.getElementById('subexp-title-input').value = '';
+      subExpNames = []; subExpResults = []; subExpTitle = '';
+      localStorage.removeItem('exp_backup');
+      show('view-setup');
+    }
+
+    // ── Auto-save / restore ──
+    function saveBackup() {
+      localStorage.setItem('exp_backup', JSON.stringify({
+        total, current, success, failure, expName, logs, subExpNames, subExpTitle
+      }));
+    }
+
+    function tryRestoreBackup() {
+      const raw = localStorage.getItem('exp_backup');
+      if (!raw) return;
+      let bk;
+      try { bk = JSON.parse(raw); } catch { return; }
+      if (!bk || !bk.logs || bk.logs.length === 0) return;
+      if (!confirm(`检测到上次未完成的实验「${bk.expName || '未命名'}」（已记录 ${bk.logs.length} 次）。\n是否恢复继续？\n（点击取消将丢弃该记录）`)) {
+        localStorage.removeItem('exp_backup');
+        return;
+      }
+      ({ total, current, success, failure, expName, logs, subExpNames, subExpTitle } = bk);
+      subExpResults = subExpNames.map(() => null);
+      document.getElementById('rec-exp-name').textContent = expName || '';
+      document.getElementById('subexp-title-input').value = subExpTitle || '';
+      updateRecording();
+      show('view-recording');
+    }
+
+    // ── Close / navigation guard ──
+    window.addEventListener('beforeunload', function(e) {
+      if (!document.getElementById('view-recording').classList.contains('hidden')) {
+        saveBackup();
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+
+    document.getElementById('total-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') startExperiment();
+    });
+
+    document.getElementById('subexp-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') addSubExp();
+    });
+
+    // Sync title variable whenever user edits the field
+    document.getElementById('subexp-title-input').addEventListener('input', () => {
+      subExpTitle = document.getElementById('subexp-title-input').value.trim();
+    });
+
+    tryRestoreBackup();
+  </script>
+</body>
+</html>
