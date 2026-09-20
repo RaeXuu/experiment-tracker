@@ -1,8 +1,9 @@
 # 实验记录工具
 
 一个轻量级的单文件实验记录工具，用于按次数记录实验的成功、失败、备注和子任务结果，并在实验结束后导出 TXT 报告。
-
 工具完全运行在浏览器中，不需要安装依赖、启动服务器或连接数据库。
+
+<img width="743" height="641" alt="Screenshot 2026-09-20 at 2 42 37 PM" src="https://github.com/user-attachments/assets/3d369ac9-b5e8-4652-91a0-9756512d4550" />
 
 ## 功能
 
@@ -65,4 +66,4 @@ experiment-tracker/
 项目的 HTML、CSS 和 JavaScript 均位于 `experiment-tracker.html` 中。修改后刷新浏览器即可查看结果，不需要构建步骤。
 
 建议使用现代浏览器运行，以确保本地存储和文件下载功能正常工作。
-<img width="743" height="641" alt="Screenshot 2026-09-20 at 2 42 37 PM" src="https://github.com/user-attachments/assets/3d369ac9-b5e8-4652-91a0-9756512d4550" />
+
